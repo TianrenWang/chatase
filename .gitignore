@@ -1,0 +1,5 @@
+env
+backend/build
+__pycache__
+frontend/node_modules
+db.sqlite3
