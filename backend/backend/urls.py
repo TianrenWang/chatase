@@ -17,7 +17,6 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, re_path, include
 from django.shortcuts import render
-from api import test
 
 
 def render_react(request):
@@ -27,7 +26,7 @@ def render_react(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('users.urls')),
-    re_path(r'^api/test', test.test_response),
+    path('api/', include('chatbot.urls')),
     re_path(r"^$", render_react),
     re_path(r"^(?:.*)/?$", render_react),
 ]

@@ -6,6 +6,9 @@ name = "pypi"
 [packages]
 django = "*"
 whitenoise = "*"
+openai = "*"
+python-dotenv = "*"
+djangorestframework-api-key = "==2.*"
 
 [dev-packages]
 
