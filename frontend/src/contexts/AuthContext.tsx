@@ -2,7 +2,7 @@ import { ReactElement, createContext, useEffect, useState } from "react";
 import httpclient from "../helpers/httpRequestClient";
 
 interface User {
-  username: string;
+  email: string;
   id: string;
 }
 

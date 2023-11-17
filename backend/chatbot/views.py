@@ -17,7 +17,8 @@ class APIKey(APIView):
     authentication_classes = (SessionAuthentication,)
 
     def post(self, request):
-        api_key, key = APIKeyModel.objects.create_key(user=request.user)
+        api_key, key = APIKeyModel.objects.create_key(
+            user=request.user, name="Just a key")
         return Response({"key": key}, status=status.HTTP_200_OK)
 
 

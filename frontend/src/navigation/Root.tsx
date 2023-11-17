@@ -1,14 +1,47 @@
 import { useContext } from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+} from "react-router-dom";
 
 import { AuthContext } from "../contexts/AuthContext";
-import Playground from "./Playground";
-import Authentication from "./Authentication";
+import Dashboard from "./Dashboard/Dashboard";
+import Authentication from "./Authentication/Authentication";
+import TabWithHeader from "./Dashboard/TabWithHeader";
+import AccountForm from "./Dashboard/AccountForm";
+import APIKeysManager from "./Dashboard/APIKeysManager";
 
 const loggedInRouter = createBrowserRouter([
   {
     path: "/",
-    element: <Playground />,
+    element: <Dashboard />,
+    children: [
+      {
+        path: "/",
+        element: (
+          <TabWithHeader tabTitle="Account" tabDescription="">
+            <AccountForm />
+          </TabWithHeader>
+        ),
+      },
+      {
+        path: "apikeys",
+        element: (
+          <TabWithHeader tabTitle="API Keys" tabDescription="">
+            <APIKeysManager />
+          </TabWithHeader>
+        ),
+      },
+      {
+        path: "admin",
+        element: null,
+      },
+      {
+        path: "*",
+        element: <Navigate to="/" />,
+      },
+    ],
   },
 ]);
 
@@ -16,6 +49,14 @@ const loggedOutRouter = createBrowserRouter([
   {
     path: "/",
     element: <Authentication />,
+  },
+  {
+    path: "admin",
+    element: null,
+  },
+  {
+    path: "*",
+    element: <Navigate to="/" />,
   },
 ]);
 
