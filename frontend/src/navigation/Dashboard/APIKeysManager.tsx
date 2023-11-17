@@ -43,12 +43,15 @@ export default function APIKeysManager() {
           Generate API Key
         </Button>
       </div>
-      <h3 className="text-lg font-medium">How API Keys Work</h3>
+      <h3 className="text-lg font-medium">How to use API key</h3>
       <Separator />
       <p className="text-sm text-muted-foreground">
-        Because Chatase is currently a prototype, you can generate as many API
-        keys as you want. However, they all authenticate to the same account,
-        and each account can only support one conversational instance (for now).
+        Add the API key to the "Authorization" header in your requests
+      </p>
+      <p className="text-sm text-muted-foreground">
+        * Note: Because Chatase is currently a prototype, you can generate as
+        many API keys as you want. However, they all authenticate to your, and
+        each account can only support one conversational instance (for now).
       </p>
     </>
   );

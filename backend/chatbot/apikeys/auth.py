@@ -17,10 +17,15 @@ class HasAPIKey(BaseHasAPIKey):
 
 class APIKeyAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
+        if not "HTTP_AUTHORIZATION" in request.META:
+            raise exceptions.AuthenticationFailed('No API key was provided')
         key = request.META["HTTP_AUTHORIZATION"].split()[1]
-        apiKey = APIKey.objects.get_from_key(key)
-        if not apiKey:
-            return None
+
+        try:
+            apiKey = APIKey.objects.get_from_key(key)
+        except:
+            raise exceptions.AuthenticationFailed(
+                'Provided API key is invalid')
 
         try:
             user = apiKey.user
