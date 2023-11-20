@@ -9,6 +9,8 @@ whitenoise = "*"
 openai = "*"
 python-dotenv = "*"
 djangorestframework-api-key = "==2.*"
+psycopg2 = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
 
