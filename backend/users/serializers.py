@@ -5,14 +5,13 @@ from django.core.exceptions import ValidationError
 UserModel = get_user_model()
 
 
-class UserRegisterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserModel
-        fields = '__all__'
+class UserRegisterSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
 
     def create(self, clean_data):
         user_obj = UserModel.objects.create_user(
-            email=clean_data['email'], password=clean_data['password'], username=clean_data['username'])
+            email=clean_data['email'], password=clean_data['password'], username=clean_data['email'])
         user_obj.save()
         return user_obj
 

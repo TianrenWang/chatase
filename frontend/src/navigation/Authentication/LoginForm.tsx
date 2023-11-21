@@ -45,7 +45,7 @@ export function LoginForm() {
         setUser(res.data);
       })
       .catch((error) => {
-        setErrorMessage(error.message);
+        setErrorMessage(error.response.data.message);
         setIsLoading(false);
       });
   }

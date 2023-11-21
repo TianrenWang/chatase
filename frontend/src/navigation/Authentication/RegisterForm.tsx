@@ -21,8 +21,8 @@ import { Icons } from "../../components/ui/icons";
 const formSchema = z
   .object({
     email: z.string().email(),
-    password: z.string(),
-    confirmPassword: z.string(),
+    password: z.string().min(8),
+    confirmPassword: z.string().min(8),
   })
   .required()
   .refine((val) => val.password === val.confirmPassword, {
@@ -52,7 +52,7 @@ export function RegisterForm() {
         setUser(res.data);
       })
       .catch((error) => {
-        setErrorMessage(error.message);
+        setErrorMessage(error.response.data.message);
         setIsLoading(false);
       });
   }

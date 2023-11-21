@@ -12,11 +12,15 @@ class UserRegister(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def post(self, request):
-        clean_data = custom_validation(request.data)
+        try:
+            clean_data = custom_validation(request.data)
+        except:
+            return Response({"message": "Email is already taken"}, status=status.HTTP_409_CONFLICT)
         serializer = UserRegisterSerializer(data=clean_data)
         if serializer.is_valid(raise_exception=True):
             user = serializer.create(clean_data)
             if user:
+                login(request, user)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
@@ -31,8 +35,11 @@ class UserLogin(APIView):
         assert validate_password(data)
         serializer = UserLoginSerializer(data=data)
         if serializer.is_valid(raise_exception=True):
-            user = serializer.check_user(data)
-            login(request, user)
+            try:
+                user = serializer.check_user(data)
+                login(request, user)
+            except:
+                return Response({"message": "Login information is invalid."}, status=status.HTTP_401_UNAUTHORIZED)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
 
