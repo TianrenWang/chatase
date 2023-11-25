@@ -1,16 +1,11 @@
 from .apikeys.auth import HasAPIKey, APIKeyAuthentication
 from .apikeys.models import APIKey as APIKeyModel
 from .models import Conversation, Message
+from .engine.generator import generateMessage
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
-from openai import OpenAI
-from dotenv import load_dotenv
-load_dotenv()
-
-
-client = OpenAI()
 
 
 class APIKey(APIView):
@@ -38,24 +33,15 @@ class Chat(APIView):
             user = APIKeyModel.objects.get_from_key(key).user
             conversation = Conversation.objects.get(
                 pk=conversationId, user=user)
-            humanMessage = Message.objects.create(
+            Message.objects.create(
                 text=request.data["text"], context="", conversation=conversation, isHuman=True)
-            humanMessage.save()
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": humanMessage.text}
-                ]
-            )
-            botMessage = Message.objects.create(
-                text=response.choices[0].message.content, context="", conversation=conversation)
-            botMessage.save()
+
+            actualMessage, context = generateMessage(conversation)
+            Message.objects.create(
+                text=actualMessage, context=context, conversation=conversation)
         except Conversation.DoesNotExist:
             return Response({"message": f"Conversation with ID {conversationId} does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        except:
-            return Response({"message": "Internal error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        return Response({"message": response.choices[0].message.content}, status=status.HTTP_200_OK)
+        return Response({"message": actualMessage}, status=status.HTTP_200_OK)
 
     def post(self, request):
         try:
