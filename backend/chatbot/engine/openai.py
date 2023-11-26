@@ -40,4 +40,8 @@ def getSophiaEmotion(messages):
 def extractMessagesFromText(text: str):
     prompt = "Extract the text messages from the text as a single string. Include emojis. Do not include phrases that ask for an input: "
     completion = getSimpleCompletion(f"{prompt}{text}")
+    if completion[0] == "\"":
+        completion = completion[1:]
+    if completion[len(completion)] == "\"":
+        completion = completion[:-1]
     return completion
