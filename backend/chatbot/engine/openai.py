@@ -42,6 +42,6 @@ def extractMessagesFromText(text: str):
     completion = getSimpleCompletion(f"{prompt}{text}")
     if completion[0] == "\"":
         completion = completion[1:]
-    if completion[len(completion)] == "\"":
+    if completion[len(completion) - 1] == "\"":
         completion = completion[:-1]
     return completion
