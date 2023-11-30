@@ -40,7 +40,15 @@ class Chat(APIView):
             Message.objects.create(
                 text=actualMessage, context=context, conversation=conversation)
         except Conversation.DoesNotExist:
-            return Response({"message": f"Conversation with ID {conversationId} does not exist"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"message": f"Conversation with ID {conversationId} does not exist"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except:
+            return Response(
+                {"message": "Sorry, something wrong happened in the server. Please let Frank know about this."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         return Response({"message": actualMessage}, status=status.HTTP_200_OK)
 
     def post(self, request):

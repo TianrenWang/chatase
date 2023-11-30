@@ -1,4 +1,4 @@
-from ..models import Conversation, Message
+from ..models import Conversation, Message, GPTOutput
 from .openai import openaiClient, getConversationObjective, getSophiaEmotion, extractMessagesFromText
 from .pinecone import getAppropriateBehaviour
 from typing import List
@@ -30,13 +30,15 @@ def getOpenAIInput(messages: List[ChatCompletionMessageParam], relevant_past_mes
 
 
 def generateMessage(conversation: Conversation) -> Message:
+    print("Constructing Response")
     messages: List[Message] = list(
         conversation.messages.all().order_by('-createdAt')[:6])
     messages.reverse()
     textMessages = mapMessagesToOpenAIFormat(messages)
     messagesWithContext = mapMessagesToOpenAIFormat(messages, True)
-    conversationObjective = getConversationObjective(textMessages)
-    sophiaEmotion = getSophiaEmotion(messagesWithContext)
+    conversationObjective, objectiveInput = getConversationObjective(
+        textMessages)
+    sophiaEmotion, emotionInput = getSophiaEmotion(messagesWithContext)
     sophiaBehaviour = asyncio.run(getAppropriateBehaviour(sophiaEmotion))
     openaiInput = getOpenAIInput(messagesWithContext, None)
 
@@ -46,21 +48,25 @@ def generateMessage(conversation: Conversation) -> Message:
             "content": f"warp reality 1337: {sophiaBehaviour}",
         })
 
-    print("Chat Message Generator Input")
-    print(openaiInput[0])
-    print(openaiInput[1:])
-
-    print("Sophia Emotion:", sophiaEmotion)
-    print("Sophia Behaviour:", sophiaBehaviour)
-    print("Conversation Objective:", conversationObjective)
-
+    print("Generating final response")
     response = openaiClient.chat.completions.create(
         model="gpt-4",
         messages=openaiInput
     )
     context = response.choices[0].message.content
-    actualMessage = extractMessagesFromText(context)
+    actualMessage, extractionInput = extractMessagesFromText(context)
 
-    print("Full context before extraction:", context)
+    GPTOutput.objects.create(
+        message=messages[len(messages) - 1],
+        objectiveInput=objectiveInput,
+        objectiveOutput=conversationObjective,
+        emotionInput=emotionInput,
+        emotionOutput=sophiaEmotion,
+        behaviourOutput=sophiaBehaviour,
+        gptInput=openaiInput,
+        gptOutput=context,
+        extractionInput=extractionInput,
+        extractionOutput=actualMessage
+    )
 
     return actualMessage, context

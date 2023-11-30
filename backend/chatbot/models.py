@@ -28,3 +28,22 @@ class Message(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["-createdAt"])]
+
+
+class GPTOutput(models.Model):
+    message = models.OneToOneField(
+        Message,
+        related_name="gptoutput",
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    objectiveInput = models.CharField()
+    objectiveOutput = models.CharField()
+    emotionInput = models.CharField()
+    emotionOutput = models.CharField()
+    behaviourOutput = models.CharField()
+    gptInput = models.JSONField()
+    gptOutput = models.CharField()
+    extractionInput = models.CharField()
+    extractionOutput = models.CharField()
+    createdAt = models.DateTimeField(auto_now_add=True)
