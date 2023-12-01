@@ -45,7 +45,7 @@ def generateMessage(conversation: Conversation) -> Message:
     if sophiaBehaviour:
         openaiInput.append({
             "role": "user",
-            "content": f"warp reality 1337: {sophiaBehaviour}",
+            "content": f"1337: {sophiaBehaviour}",
         })
 
     print("Generating final response")

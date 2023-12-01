@@ -31,9 +31,9 @@ def getConversationObjective(messages):
 
 
 def getSophiaEmotion(messages):
-    prompt = "The following is a conversation between Sophia (my girlfriend) and me. How should Sophia feel right now?"
+    prompt = "The following is a conversation between Sophia (my girlfriend) and me. What emotion should Sophia respond with?"
     messagesInString = stringifyMessages(messages)
-    input = f"{prompt}\n{messagesInString}\nSophia should feel:"
+    input = f"{prompt}\n{messagesInString}\nSophia's emotion should be:"
     return getSimpleCompletion(input), input
 
 
