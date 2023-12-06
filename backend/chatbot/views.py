@@ -6,6 +6,9 @@ from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
+from django.core.exceptions import ValidationError
+from pinecone.core.exceptions import PineconeProtocolError
+import os
 
 
 class APIKey(APIView):
@@ -44,9 +47,14 @@ class Chat(APIView):
                 {"message": f"Conversation with ID {conversationId} does not exist"},
                 status=status.HTTP_404_NOT_FOUND
             )
-        except:
+        except ValidationError:
             return Response(
-                {"message": "Sorry, something wrong happened in the server. Please let Frank know about this."},
+                {"message": f"Conversation ID {conversationId} is malformed"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"message": f"Sorry, something wrong happened in the server. Please let Frank know about this. {str(e)}."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         return Response({"message": actualMessage}, status=status.HTTP_200_OK)
