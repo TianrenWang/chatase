@@ -29,6 +29,22 @@ def getOpenAIInput(messages: List[ChatCompletionMessageParam], relevant_past_mes
     return [system_message] + messages
 
 
+def getMessageFromText(text):
+    start = -1
+    result = ""
+    for i in range(len(text)):
+        if text[i] == '"':
+            if start < 0:
+                start = i
+            else:
+                if result == "":
+                    result = text[start + 1:i]
+                else:
+                    result += " " + text[start + 1:i]
+                start = -1
+    return result
+
+
 def generateMessage(conversation: Conversation) -> Message:
     print("Constructing Response")
     messages: List[Message] = list(
@@ -54,7 +70,7 @@ def generateMessage(conversation: Conversation) -> Message:
         messages=openaiInput
     )
     context = response.choices[0].message.content
-    actualMessage, extractionInput = extractMessagesFromText(context)
+    finalMessage = getMessageFromText(context)
 
     GPTOutput.objects.create(
         message=messages[len(messages) - 1],
@@ -65,8 +81,8 @@ def generateMessage(conversation: Conversation) -> Message:
         behaviourOutput=sophiaBehaviour,
         gptInput=openaiInput,
         gptOutput=context,
-        extractionInput=extractionInput,
-        extractionOutput=actualMessage
+        extractionInput="",
+        extractionOutput=finalMessage
     )
 
-    return actualMessage, context
+    return finalMessage, context

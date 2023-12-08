@@ -8,8 +8,8 @@ const sidebarNavItems = [
     href: "/",
   },
   {
-    title: "API Keys",
-    href: "/apikeys",
+    title: "API",
+    href: "/api",
   },
 ];
 

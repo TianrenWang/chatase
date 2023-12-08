@@ -7,8 +7,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from django.core.exceptions import ValidationError
-from pinecone.core.exceptions import PineconeProtocolError
-import os
 
 
 class APIKey(APIView):
@@ -72,3 +70,29 @@ class Chat(APIView):
         except:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response({"conversationId": conversation.id}, status=status.HTTP_200_OK)
+
+
+class TestChat(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (SessionAuthentication,)
+
+    def post(self, request):
+        try:
+            if not "conversationId" in request.query_params:
+                conversation = Conversation.objects.create(
+                    name="_test_channel", user=request.user)
+            else:
+                conversation = Conversation.objects.get(
+                    pk=request.query_params["conversationId"], user=request.user)
+            Message.objects.create(
+                text=request.data["text"], context="", conversation=conversation, isHuman=True)
+
+            actualMessage, context = generateMessage(conversation)
+            Message.objects.create(
+                text=actualMessage, context=context, conversation=conversation)
+        except Exception as e:
+            return Response(
+                {"message": f"Sorry, something wrong happened in the server. Please let Frank know about this. {str(e)}."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        return Response({"message": actualMessage, "conversationId": conversation.id}, status=status.HTTP_200_OK)

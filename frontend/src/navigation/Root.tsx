@@ -26,9 +26,9 @@ const loggedInRouter = createBrowserRouter([
         ),
       },
       {
-        path: "apikeys",
+        path: "api",
         element: (
-          <TabWithHeader tabTitle="API Keys" tabDescription="">
+          <TabWithHeader tabTitle="API" tabDescription="">
             <APIKeysManager />
           </TabWithHeader>
         ),
