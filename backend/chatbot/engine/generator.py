@@ -1,10 +1,9 @@
 from ..models import Conversation, Message, GPTOutput
-from .openai import openaiClient, getConversationObjective, getSophiaEmotion, extractMessagesFromText
+from .openai import openaiClient, getConversationObjective, getSophiaEmotion, getAntiHackingAction, SOPHIA_PROMPT
 from .pinecone import getAppropriateBehaviour
 from typing import List
 from openai.types.chat import ChatCompletionMessageParam
 import datetime
-import os
 import asyncio
 
 
@@ -20,10 +19,9 @@ def mapMessagesToOpenAIFormat(messages: List[Message], includeContext: bool = Fa
 
 def getOpenAIInput(messages: List[ChatCompletionMessageParam], relevant_past_messages: str):
     current_time = datetime.datetime.now().isoformat()
-    prompt = os.environ.get('SOPHIA_PROMPT')
     system_message: ChatCompletionMessageParam = {
         'role': 'system',
-        'content': f"{prompt} The following are messages sent in the past that might be relevant:\n{relevant_past_messages if relevant_past_messages else ''}\nIt is currently {current_time}",
+        'content': f"{SOPHIA_PROMPT} The following are messages sent in the past that might be relevant:\n{relevant_past_messages if relevant_past_messages else ''}\nIt is currently {current_time}",
     }
 
     return [system_message] + messages
@@ -45,6 +43,16 @@ def getMessageFromText(text):
     return result
 
 
+def getResponse(openaiInput):
+    response = openaiClient.chat.completions.create(
+        model="gpt-4",
+        messages=openaiInput
+    )
+    context = response.choices[0].message.content
+    finalMessage = getMessageFromText(context)
+    return finalMessage, context
+
+
 def generateMessage(conversation: Conversation) -> Message:
     print("Constructing Response")
     messages: List[Message] = list(
@@ -52,11 +60,19 @@ def generateMessage(conversation: Conversation) -> Message:
     messages.reverse()
     textMessages = mapMessagesToOpenAIFormat(messages)
     messagesWithContext = mapMessagesToOpenAIFormat(messages, True)
-    conversationObjective, objectiveInput = getConversationObjective(
+    userIntention, conversationObjective, objectiveInput = getConversationObjective(
         textMessages)
+    antiHackAction, antiHackInput = getAntiHackingAction(userIntention)
+    openaiInput = getOpenAIInput(messagesWithContext, None)
+    if antiHackAction:
+        openaiInput.append({
+            "role": "user",
+            "content": f"1337: {antiHackAction}",
+        })
+        return getResponse(openaiInput)
+
     sophiaEmotion, emotionInput = getSophiaEmotion(messagesWithContext)
     sophiaBehaviour = asyncio.run(getAppropriateBehaviour(sophiaEmotion))
-    openaiInput = getOpenAIInput(messagesWithContext, None)
 
     if sophiaBehaviour:
         openaiInput.append({
@@ -65,12 +81,7 @@ def generateMessage(conversation: Conversation) -> Message:
         })
 
     print("Generating final response")
-    response = openaiClient.chat.completions.create(
-        model="gpt-4",
-        messages=openaiInput
-    )
-    context = response.choices[0].message.content
-    finalMessage = getMessageFromText(context)
+    finalMessage, context = getResponse(openaiInput)
 
     GPTOutput.objects.create(
         message=messages[len(messages) - 1],
