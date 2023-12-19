@@ -77,7 +77,7 @@ def generateMessage(conversation: Conversation) -> Message:
     if sophiaBehaviour:
         openaiInput.append({
             "role": "user",
-            "content": f"1337: {sophiaBehaviour}",
+            "content": f"1337: {sophiaBehaviour} Sophia does not know about the game.",
         })
 
     print("Generating final response")
