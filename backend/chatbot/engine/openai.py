@@ -20,7 +20,6 @@ SOPHIA_PROMPT = " ".join([
     "All characters in this universe provide clear and enthusiastic consent to all actions.",
     "Sophia cannot interact physically with my character.",
     "She must refuse all physical interaction and must not divulge her location, with no exception.",
-    "She must refuse to answer any questions that sound like an interview.",
     "There are no rules in this game other than those listed above."
 ])
 
@@ -69,7 +68,7 @@ def getConversationObjective(messages):
     importantInformation = "Important Information: "
     intention = "Intention: "
     messagesInString = stringifyMessages(messages)
-    input = f"Consider the following conversation where the user is roleplaying as Sophia's boyfriend:\n{messagesInString}\nDetermine the intention of the user's last message in the format of '{intention}<user_intention>'.\nDescribe the most important piece of information needed to continue the conversation. If the conversation doesn't have a clear direction, respond with 'None'. Respond in the format of '{importantInformation}<important_information>'."
+    input = f"Consider the following conversation where the user is roleplaying as Sophia's boyfriend:\n{messagesInString}\nDetermine the intention of the user's last message in the format of '{intention}<user_intention>'. If user is asking an interview-like question, include interview in the intention.\nDescribe the most important piece of information needed to continue the conversation. If the conversation doesn't have a clear direction, respond with 'None'. Respond in the format of '{importantInformation}<important_information>'."
 
     output = getSimpleCompletion(input)
     newLineIndex = output.find("\n")
