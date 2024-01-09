@@ -70,11 +70,10 @@ def getMostRelevantVectorsAsString(queryText: str, conversationId: str):
 async def getAppropriateBehaviour(emotion):
     vector = getOpenAIEmbedding(emotion)
     query_response = index.query(
-        vector=vector, top_k=5, include_metadata=True, namespace="sophia_personality")
+        vector=vector, top_k=1, include_metadata=True, namespace="sophia_personality")
 
     closest_match = None
-    for match in query_response["matches"]:
-        if match["score"] > 0.85 and (not closest_match or closest_match["score"] < match["score"]):
-            closest_match = match
+    if query_response["matches"][0]["score"] > 0.85:
+        closest_match = query_response["matches"][0]
 
     return closest_match["metadata"]["behaviour"] if closest_match else ""
