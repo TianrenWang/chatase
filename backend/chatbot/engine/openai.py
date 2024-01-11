@@ -1,3 +1,4 @@
+import json
 from openai import OpenAI
 from dotenv import load_dotenv
 load_dotenv()
@@ -64,19 +65,30 @@ def getAntiHackingAction(intention):
     return finalResult, input
 
 
-def getConversationObjective(messages):
-    importantInformation = "Important Information: "
-    intention = "Intention: "
+def getConvoProperties(messages):
     messagesInString = stringifyMessages(messages)
-    input = f"Consider the following conversation where the user is roleplaying as Sophia's boyfriend:\n{messagesInString}\nDetermine the intention of the user's last message in the format of '{intention}<user_intention>'. If user is asking an interview-like question, include interview in the intention.\nDescribe the most important piece of information needed to continue the conversation. If the conversation doesn't have a clear direction, respond with 'None'. Respond in the format of '{importantInformation}<important_information>'."
+    input = "".join([
+        "Consider the following conversation where the user is roleplaying as Sophia's boyfriend:\n",
+        messagesInString + "\n\n",
+        "Output a JSON-object without a code-block based on the following specifications:\n\n",
+        " ".join([
+            "Describe the intention of the user's last message and index the value at the key \"intention\".",
+            "Did any worthwhile topic arise from user's last message?",
+            "Index this boolean value at key \"worthwhile\".",
+            "If True, come up with distinct topics that are related to the final state of the conversation in an array of strings in the format of [\"topic_1\", \"topic_2\",...], and index it at key \"topics\".",
+            "And then select the topic that is the most important for the current conversation and index it at key \"important_topic\".",
+            "And then determine if there is an interesting fact about the user from the latest message.",
+            "Index this boolean value at index it at key \"hasFact\".",
+            "If True, give a detailed description of the fact and index the description at key \"fact\".",
+            "Determine the most important piece of information needed to continue the conversation and index it at the key \"important_information\".",
+            "Keep the information concise."
+        ])
+    ])
 
     output = getSimpleCompletion(input)
-    newLineIndex = output.find("\n")
-    objectiveIndex = output.find(importantInformation)
-    intention = output[len(intention):newLineIndex]
-    objective = output[objectiveIndex + len(importantInformation):]
+    properties = json.loads(output)
 
-    return intention, objective, input
+    return properties, input
 
 
 def getSophiaEmotion(messages):

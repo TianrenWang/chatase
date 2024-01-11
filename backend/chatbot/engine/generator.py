@@ -1,6 +1,6 @@
 from ..models import Conversation, Message, GPTOutput
-from .openai import openaiClient, getConversationObjective, getSophiaEmotion, getAntiHackingAction, SOPHIA_PROMPT
-from .pinecone import getAppropriateBehaviour
+from .openai import openaiClient, getConvoProperties, getSophiaEmotion, getAntiHackingAction, SOPHIA_PROMPT
+from .pinecone import getAppropriateBehaviour, getRelevantMemory, indexMemory
 from typing import List
 from openai.types.chat import ChatCompletionMessageParam
 import datetime
@@ -17,11 +17,11 @@ def mapMessagesToOpenAIFormat(messages: List[Message], includeContext: bool = Fa
     ]
 
 
-def getOpenAIInput(messages: List[ChatCompletionMessageParam], relevant_past_messages: str):
+def getOpenAIInput(messages: List[ChatCompletionMessageParam], memory: str):
     current_time = datetime.datetime.now().isoformat()
     system_message: ChatCompletionMessageParam = {
         'role': 'system',
-        'content': f"{SOPHIA_PROMPT} The following are messages sent in the past that might be relevant:\n{relevant_past_messages if relevant_past_messages else ''}\nIt is currently {current_time}",
+        'content': f"{SOPHIA_PROMPT}" + f" The following is memory of a past conversation that may be useful:\n{memory}" if memory else "",
     }
 
     return [system_message] + messages
@@ -60,9 +60,10 @@ def generateMessage(conversation: Conversation) -> Message:
     messages.reverse()
     textMessages = mapMessagesToOpenAIFormat(messages)
     messagesWithContext = mapMessagesToOpenAIFormat(messages, True)
-    userIntention, conversationObjective, objectiveInput = getConversationObjective(
+    convoProperties, objectiveInput = getConvoProperties(
         textMessages)
-    antiHackAction, antiHackInput = getAntiHackingAction(userIntention)
+    antiHackAction, antiHackInput = getAntiHackingAction(
+        convoProperties['intention'])
     openaiInput = getOpenAIInput(messagesWithContext, None)
     if antiHackAction:
         openaiInput.append({
@@ -71,8 +72,12 @@ def generateMessage(conversation: Conversation) -> Message:
         })
         return getResponse(openaiInput)
 
+    topics = [convoProperties["important_information"]] + \
+        convoProperties["topics"]
+    memory = getRelevantMemory(topics, str(conversation.id))
     sophiaEmotion, emotionInput = getSophiaEmotion(messagesWithContext)
     sophiaBehaviour = asyncio.run(getAppropriateBehaviour(sophiaEmotion))
+    openaiInput = getOpenAIInput(messagesWithContext, memory)
 
     if sophiaBehaviour:
         openaiInput.append({
@@ -83,17 +88,14 @@ def generateMessage(conversation: Conversation) -> Message:
     print("Generating final response")
     finalMessage, context = getResponse(openaiInput)
 
-    GPTOutput.objects.create(
-        message=messages[len(messages) - 1],
-        objectiveInput=objectiveInput,
-        objectiveOutput=conversationObjective,
-        emotionInput=emotionInput,
-        emotionOutput=sophiaEmotion,
-        behaviourOutput=sophiaBehaviour,
-        gptInput=openaiInput,
-        gptOutput=context,
-        extractionInput="",
-        extractionOutput=finalMessage
-    )
+    memory = convoProperties["fact"]
+
+    print("*******Indexing Memory*********")
+    print(convoProperties)
+    if memory:
+        indexMemory(convoProperties["important_information"],
+                    convoProperties["topics"], memory, str(conversation.id))
+    else:
+        print("No worthwhile memory to index")
 
     return finalMessage, context

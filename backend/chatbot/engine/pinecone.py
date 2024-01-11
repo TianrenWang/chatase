@@ -1,15 +1,18 @@
 from .openai import openaiClient
-from ..models import Message
+import uuid
+import asyncio
 import os
 import pinecone
 from dotenv import load_dotenv
 load_dotenv()
 
+USER_NAMESPACE = "user_memories_"
+
 pinecone.init(
     api_key=os.environ['PINECONE_API_KEY'],
     environment=os.environ['PINECONE_ENVIRONMENT'])
 
-index = pinecone.Index("sophists")
+index = pinecone.Index(os.environ['PINECONE_INDEX_NAME'])
 
 
 def getOpenAIEmbedding(text):
@@ -19,52 +22,105 @@ def getOpenAIEmbedding(text):
     return response.data[0].embedding
 
 
-"""
-We currently do not need to use this function because I haven't
-figured out the best way to utilize the indexed memory.
-"""
+def indexMemory(summary: str, keywords: list[str], memory: str, conversationId: str):
+    summaryVector = getOpenAIEmbedding(summary)
+    namespace = USER_NAMESPACE + conversationId
+    vectors = []
 
-
-def indexMessage(message: Message):
-    conversation = message.conversation
-    vector = getOpenAIEmbedding(message.text)
-    query_response = index.query(
-        vector=vector, top_k=1, namespace=conversation.id)
-    if query_response["matches"] and query_response["matches"][0]["score"] > 0.98:
-        return
-
-    # Index the message if it isn't a duplicate
-    vectors = [
-        {
-            "id": message.id,
-            "values": vector,
-            "metadata": {
-                "isAIMessage": not message.isHuman,
-                "createdAt": message.createdAt,
-                "text": message.text,
-                "name": message.conversation.name,
-                "context": message.context,
-            },
-        },
-    ]
-    index.upsert(vectors, conversation.id)
-
-
-def getMostRelevantVectorsAsString(queryText: str, conversationId: str):
-    vector = getOpenAIEmbedding(queryText)
-    query_request = {
-        "vector": vector,
-        "top_k": 5,
-        "include_metadata": True,
-        "namespace": conversationId,
-    }
-    query_response = index.query(query_request)
-    return '\n'.join(
-        f'{match["metadata"]["userId"] != os.environ["SOPHIA_ID"] and "me" or "Sophia"} on {match["metadata"]["createdAt"]}: {match["metadata"]["text"]}'
-        if match["score"] > 0.85 else "" for match in query_response["matches"]
+    queryResponse = index.query(
+        vector=summaryVector,
+        top_k=10,
+        namespace=namespace,
+        include_metadata=True,
+        include_values=True
     )
 
-# Function to get appropriate behavior based on emotion
+    for summaryMatch in queryResponse["matches"]:
+        if summaryMatch["score"] > 0.98:
+            return
+        elif summaryMatch["score"] > 0.87:
+            metadata = summaryMatch["metadata"]
+            vectors.append({
+                "id": summaryMatch["id"],
+                "values": summaryMatch["values"],
+                "metadata": {
+                    "indexText": metadata["indexText"],
+                    "memory": metadata["memory"] + [memory],
+                },
+            })
+
+    vectors.append({
+        "id": str(uuid.uuid4()),
+        "values": summaryVector,
+        "metadata": {
+            "indexText": summary,
+            "memory": [memory],
+        },
+    })
+
+    queryResponses = asyncio.run(
+        _batchQuery(keywords, conversationId))
+    for response, keyword in zip(queryResponses, keywords):
+        vector = response[1]
+        matches = response[0]
+        hasExactMatch = False
+        for match in matches:
+            if match["score"] > 0.98:
+                hasExactMatch = True
+            if match["score"] > 0.95:
+                vectors.append({
+                    "id": match["id"],
+                    "values": match["values"],
+                    "metadata": {
+                        "indexText": keyword,
+                        "memory": match["metadata"]["memory"] + [memory],
+                    },
+                })
+
+        if not hasExactMatch:
+            vectors.append({
+                "id": str(uuid.uuid4()),
+                "values": vector,
+                "metadata": {
+                    "indexText": keyword,
+                    "memory": [memory],
+                },
+            })
+
+    index.upsert(vectors, namespace)
+
+
+def getRelevantMemory(queryTexts: list[str], conversationId: str):
+    queryResponses = asyncio.run(_batchQuery(queryTexts, conversationId))
+    bestMatch = None
+    for response in queryResponses:
+        matches = response[0]
+        for match in matches:
+            if match["score"] > 0.87:
+                if not bestMatch or match["score"] > bestMatch["score"]:
+                    bestMatch = match
+    return "\n".join(bestMatch["metadata"]["memory"]) if bestMatch else None
+
+
+async def _batchQuery(queryTexts: list[str], conversationId: str):
+    tasks = []
+    for text in queryTexts:
+        tasks.append(asyncio.ensure_future(
+            _queryWithOneText(text, conversationId)))
+
+    return await asyncio.gather(*tasks)
+
+
+async def _queryWithOneText(queryText: str, conversationId: str):
+    vector = getOpenAIEmbedding(queryText)
+    query_response = index.query(
+        vector=vector,
+        top_k=10,
+        include_metadata=True,
+        include_values=True,
+        namespace=USER_NAMESPACE + conversationId
+    )
+    return query_response["matches"], vector
 
 
 async def getAppropriateBehaviour(emotion):
@@ -73,7 +129,8 @@ async def getAppropriateBehaviour(emotion):
         vector=vector, top_k=1, include_metadata=True, namespace="sophia_personality")
 
     closest_match = None
-    if query_response["matches"][0]["score"] > 0.85:
-        closest_match = query_response["matches"][0]
+    matches = query_response["matches"]
+    if len(matches) and matches[0]["score"] > 0.85:
+        closest_match = matches[0]
 
     return closest_match["metadata"]["behaviour"] if closest_match else ""
