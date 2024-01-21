@@ -4,15 +4,16 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-django = "*"
+django = "==4.2.7"
 whitenoise = "*"
 openai = "*"
 python-dotenv = "*"
 djangorestframework-api-key = "==2.*"
 psycopg2 = "*"
 psycopg2-binary = "*"
-pinecone-client = "*"
+pinecone-client = "==2.2.4"
 gunicorn = "*"
+dj-database-url = "*"
 
 [dev-packages]
 
