@@ -1,5 +1,5 @@
-from .apikeys.auth import HasAPIKey, APIKeyAuthentication
-from .apikeys.models import APIKey as APIKeyModel
+from .auth.auth import HasAPIKey, APIKeyAuthentication, FromPoe, PoeAuthentication
+from .auth.models import APIKey as APIKeyModel
 from .models import Conversation, Message
 from .engine.generator import generateMessage
 from rest_framework import status, permissions
@@ -96,3 +96,14 @@ class TestChat(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         return Response({"message": actualMessage, "conversationId": conversation.id}, status=status.HTTP_200_OK)
+
+
+class PoeChat(APIView):
+    permission_classes = (FromPoe,)
+    authentication_classes = (PoeAuthentication,)
+
+    def post(self, request):
+        print("*******************")
+        print(request.data)
+        print(request.META)
+        return Response({"text": "conversationId"}, status=status.HTTP_200_OK)
