@@ -2,11 +2,34 @@ from .auth.auth import HasAPIKey, APIKeyAuthentication, FromPoe, PoeAuthenticati
 from .auth.models import APIKey as APIKeyModel
 from .models import Conversation, Message
 from .engine.generator import generateMessage
+from .helper.renderer import ServerSentEventRenderer
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from django.core.exceptions import ValidationError
+from django.http import StreamingHttpResponse
+import json
+
+
+def gen_message(event, data):
+    return '\nevent: {}\ndata: {}\n\n'.format(event, json.dumps(data))
+
+
+def handleTextMessage(conversation: Conversation, text: str):
+    Message.objects.create(text=text, context="",
+                           conversation=conversation, isHuman=True)
+    actualMessage, context = generateMessage(conversation)
+    Message.objects.create(
+        text=actualMessage, context=context, conversation=conversation)
+    return actualMessage
+
+
+def generateServerError(message: str):
+    return Response(
+        {"message": f"Sorry, something wrong happened in the server. Please let Frank know about this. {message}."},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    )
 
 
 class APIKey(APIView):
@@ -34,12 +57,8 @@ class Chat(APIView):
             user = APIKeyModel.objects.get_from_key(key).user
             conversation = Conversation.objects.get(
                 pk=conversationId, user=user)
-            Message.objects.create(
-                text=request.data["text"], context="", conversation=conversation, isHuman=True)
-
-            actualMessage, context = generateMessage(conversation)
-            Message.objects.create(
-                text=actualMessage, context=context, conversation=conversation)
+            actualMessage = handleTextMessage(
+                conversation, request.data["text"])
         except Conversation.DoesNotExist:
             return Response(
                 {"message": f"Conversation with ID {conversationId} does not exist"},
@@ -84,12 +103,8 @@ class TestChat(APIView):
             else:
                 conversation = Conversation.objects.get(
                     pk=request.query_params["conversationId"], user=request.user)
-            Message.objects.create(
-                text=request.data["text"], context="", conversation=conversation, isHuman=True)
-
-            actualMessage, context = generateMessage(conversation)
-            Message.objects.create(
-                text=actualMessage, context=context, conversation=conversation)
+            actualMessage = handleTextMessage(
+                conversation, request.data["text"])
         except Exception as e:
             return Response(
                 {"message": f"Sorry, something wrong happened in the server. Please let Frank know about this. {str(e)}."},
@@ -101,9 +116,29 @@ class TestChat(APIView):
 class PoeChat(APIView):
     permission_classes = (FromPoe,)
     authentication_classes = (PoeAuthentication,)
+    renderer_classes = [ServerSentEventRenderer]
+
+    def streamer(self, conversation: Conversation, userMessage: str):
+        yield gen_message("meta", {"content_type": "text/markdown", "linkify": True})
+        actualMessage = handleTextMessage(conversation, userMessage)
+        yield gen_message("text", {"text": actualMessage})
+        yield gen_message("done", {})
 
     def post(self, request):
-        print("*******************")
-        print(request.data)
-        print(request.META)
-        return Response({"text": "conversationId"}, status=status.HTTP_200_OK)
+        try:
+            conversation = Conversation.objects.get(
+                name=request.data["conversation_id"], user=request.user)
+        except Conversation.DoesNotExist:
+            conversation = Conversation.objects.create(
+                name=request.data["conversation_id"], user=request.user)
+        except Exception as e:
+            return generateServerError(str(e))
+        try:
+            pastMessages = request.data["query"]
+            contextSize = len(pastMessages)
+            lastMessage = pastMessages[contextSize - 1]["content"]
+            stream = self.streamer(conversation, lastMessage)
+        except Exception as e:
+            return generateServerError(str(e))
+
+        return StreamingHttpResponse(stream, status=200, content_type='text/event-stream')

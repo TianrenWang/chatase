@@ -11,7 +11,7 @@ class Conversation(models.Model):
         on_delete=models.CASCADE,
         related_name="conversations",
     )
-    name = models.CharField(max_length=30)
+    name = models.CharField()
 
 
 class Message(models.Model):
