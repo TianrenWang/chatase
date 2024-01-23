@@ -21,7 +21,7 @@ def getOpenAIInput(messages: List[ChatCompletionMessageParam], memory: str):
     current_time = datetime.datetime.now().isoformat()
     system_message: ChatCompletionMessageParam = {
         'role': 'system',
-        'content': f"{SOPHIA_PROMPT}" + f" The following is memory of a past conversation that may be useful:\n{memory}" if memory else "",
+        'content': f"{SOPHIA_PROMPT}" + (f" The following is memory of a past conversation that may be useful:\n{memory}" if memory else ""),
     }
 
     return [system_message] + messages
@@ -43,10 +43,10 @@ def getMessageFromText(text):
     return result
 
 
-def getResponse(openaiInput):
+def getResponse(messages):
     response = openaiClient.chat.completions.create(
         model="gpt-4",
-        messages=openaiInput
+        messages=messages
     )
     context = response.choices[0].message.content
     finalMessage = getMessageFromText(context)
